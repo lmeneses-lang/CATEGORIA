@@ -51,6 +51,12 @@
   .input-group input { background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 13px 12px; color: #fff; font-family: 'Urbanist', sans-serif; font-size: 16px; font-weight: 800; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; -webkit-appearance: none; appearance: none; }
   .input-group input:focus { border-color: var(--verde); box-shadow: 0 0 0 3px rgba(56,206,166,0.2); }
   .input-group input::placeholder { color: rgba(255,255,255,0.2); font-weight: 500; }
+  .driver-type-group { margin-bottom: 12px; }
+  .driver-type-group label { display:block; margin-bottom: 8px; }
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { flex: 1 1 auto; min-width: 120px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 11px 14px; color: rgba(255,255,255,0.65); font-family: 'Urbanist', sans-serif; font-size: 14px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .chip:active { transform: scale(0.97); }
+  .chip.active { background: var(--verde); border-color: var(--verde); color: #0F111E; box-shadow: 0 0 0 3px rgba(56,206,166,0.2); }
 
   .result-card { border-radius: 18px; padding: 20px 18px 16px; text-align: center; margin-bottom: 14px; transition: all 0.4s ease; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
   .cat-evaluacion { background: linear-gradient(135deg,#1e1508,#2d2010); border: 2px solid var(--bronce); }
@@ -144,6 +150,15 @@
 
 <div class="inputs">
   <div class="inputs-title">📋 Mis métricas de este mes</div>
+
+  <div class="driver-type-group">
+    <label>🚙 ¿Eres conductor regular o de Emprende con Ridery?</label>
+    <div class="chip-group" id="driverTypeChips">
+      <div class="chip active" data-value="regular" onclick="selectDriverType('regular')">Regular</div>
+      <div class="chip" data-value="ecr" onclick="selectDriverType('ecr')">Emprende con Ridery</div>
+    </div>
+  </div>
+
   <div class="input-row">
     <div class="input-group">
       <label>⭐ Calificación</label>
@@ -195,7 +210,20 @@ const IMG_IMPULSO    = 'iVBORw0KGgoAAAANSUhEUgAAA+gAAAPoCAYAAABNo9TkAAEAAElEQVR4
 
 function fmt(n) { return parseFloat(n.toFixed(2)); }
 
+let driverType = 'regular';
+
+function selectDriverType(value) {
+  driverType = value;
+  const chips = document.querySelectorAll('#driverTypeChips .chip');
+  chips.forEach(chip => chip.classList.toggle('active', chip.dataset.value === value));
+  calculate();
+}
+
 function calculate() {
+  const isECR = driverType === 'ecr';
+  const tripsImpulsoMin = isECR ? 75 : 50;
+  const tripsLiderMin   = isECR ? 300 : 150;
+
   const r = parseFloat(document.getElementById('rating').value);
   const c = parseFloat(document.getElementById('cancel').value);
   const a = parseFloat(document.getElementById('accept').value);
@@ -217,8 +245,8 @@ function calculate() {
     return;
   }
 
-  const ri = r >= 4.5, ci = c <= 22, ai = a >= 15, ti = t >= 25;
-  const rl = r >= 4.8, cl = c <= 12, al = a >= 30, tl = t >= 100;
+  const ri = r >= 4.5, ci = c <= 22, ai = a >= 15, ti = t >= tripsImpulsoMin;
+  const rl = r >= 4.8, cl = c <= 12, al = a >= 30, tl = t >= tripsLiderMin;
   const isLider   = rl && cl && al && tl;
   const isImpulso = ri && ci && ai && ti;
   const cat = isLider ? 'lider' : isImpulso ? 'impulso' : 'evaluacion';
@@ -243,7 +271,7 @@ function calculate() {
     if (!rl) falto.push(`te faltaron <strong>${fmt(4.8-r)} puntos</strong> en calificación para llegar a 4.8`);
     if (!cl) falto.push(`tus cancelaciones estuvieron <strong>${fmt(c-12)}% por encima</strong> del 12% que pide Líder`);
     if (!al) falto.push(`te faltó subir la aceptación <strong>${fmt(30-a)} puntos</strong> para llegar al 30%`);
-    if (!tl) falto.push(`te faltaron <strong>${100-t} viajes</strong> para llegar a 100`);
+    if (!tl) falto.push(`te faltaron <strong>${tripsLiderMin-t} viajes</strong> para llegar a ${tripsLiderMin}`);
     summary.className = 'summary-box summary-impulso';
     summary.innerHTML = `🚀 Este mes fuiste <strong>Conductor Impulso</strong>. Para haber sido <strong>Líder</strong>, ${falto.join(' y ')}.`;
     nextBox.style.display = 'block';
@@ -251,14 +279,14 @@ function calculate() {
     if (!rl) tips.push(`mantén buenas calificaciones, apunta a <strong>4.8 o más</strong>`);
     if (!cl) tips.push(`reduce tus cancelaciones, el objetivo es <strong>menos del 12%</strong>`);
     if (!al) tips.push(`acepta más viajes para superar el <strong>30% de aceptación</strong>`);
-    if (!tl) tips.push(`completa al menos <strong>100 viajes</strong>`);
+    if (!tl) tips.push(`completa al menos <strong>${tripsLiderMin} viajes</strong>`);
     nextText.innerHTML = `Para ser <strong>Líder</strong> el próximo mes: ${tips.join(', ')}.`;
   } else {
     const falto = [];
     if (!ri) falto.push(`te faltaron <strong>${fmt(4.5-r)} puntos</strong> en calificación para llegar a 4.5`);
     if (!ci) falto.push(`tus cancelaciones estuvieron <strong>${fmt(c-22)}% por encima</strong> del máximo permitido (22%)`);
     if (!ai) falto.push(`te faltó subir la aceptación <strong>${fmt(15-a)} puntos</strong> para llegar al 15%`);
-    if (!ti) falto.push(`te faltaron <strong>${25-t} viajes</strong> para completar los 25`);
+    if (!ti) falto.push(`te faltaron <strong>${tripsImpulsoMin-t} viajes</strong> para completar los ${tripsImpulsoMin}`);
     summary.className = 'summary-box summary-evaluacion';
     summary.innerHTML = `🔍 Este mes estuviste en <strong>Evaluación</strong>. Para haber sido <strong>Impulso</strong>, ${falto.join(' y ')}.`;
     nextBox.style.display = 'block';
@@ -266,7 +294,7 @@ function calculate() {
     if (!ri) tips.push(`sube tu calificación a <strong>4.5 o más</strong>`);
     if (!ci) tips.push(`baja tus cancelaciones por debajo del <strong>22%</strong>`);
     if (!ai) tips.push(`acepta más viajes para llegar al <strong>15% de aceptación</strong>`);
-    if (!ti) tips.push(`completa al menos <strong>25 viajes</strong>`);
+    if (!ti) tips.push(`completa al menos <strong>${tripsImpulsoMin} viajes</strong>`);
     nextText.innerHTML = `Para llegar a <strong>Impulso</strong> el próximo mes: ${tips.join(', ')}.`;
   }
 
@@ -293,27 +321,27 @@ function calculate() {
       critItem(true,'⭐','Calificación',`Tuviste <strong>${r}</strong>. El mínimo para Líder era <strong>4.8</strong>. ¡Perfecto!`,null,(r/5)*100,'fill-teal')+
       critItem(true,'❌','Cancelaciones',`Tuviste <strong>${c}%</strong>. Líder exigía máximo <strong>12%</strong>. ¡Excelente control!`,null,((22-c)/22)*100,'fill-teal')+
       critItem(true,'✅','Aceptación de viajes',`Tuviste <strong>${a}%</strong>. El mínimo para Líder era <strong>30%</strong>. ¡Muy bien!`,null,(a/30)*100,'fill-teal')+
-      critItem(true,'🚗','Viajes completados',`Completaste <strong>${t} viajes</strong>. Líder requería mínimo <strong>100</strong>. ¡Lo lograste!`,null,(t/100)*100,'fill-teal');
+      critItem(true,'🚗','Viajes completados',`Completaste <strong>${t} viajes</strong>. Líder requería mínimo <strong>${tripsLiderMin}</strong>. ¡Lo lograste!`,null,(t/tripsLiderMin)*100,'fill-teal');
   } else if (cat === 'impulso') {
     const rMsg = rl?`Tuviste <strong>${r}</strong>. Cumpliste el <strong>4.8</strong> que exige Líder. ✓`:`Tuviste <strong>${r}</strong>. Para ser Líder necesitabas <strong>4.8</strong>. Te faltaron <strong>${fmt(4.8-r)} puntos</strong>.`;
     const cMsg = cl?`Tuviste <strong>${c}%</strong>. Cumpliste el máximo de <strong>12%</strong> que exige Líder. ✓`:`Tuviste <strong>${c}%</strong>. Líder pedía máximo <strong>12%</strong>. Estuviste <strong>${fmt(c-12)}% por encima</strong>.`;
     const aMsg = al?`Tuviste <strong>${a}%</strong>. Cumpliste el <strong>30%</strong> que exige Líder. ✓`:`Tuviste <strong>${a}%</strong>. Líder pedía mínimo <strong>30%</strong>. Te faltaron <strong>${fmt(30-a)} puntos porcentuales</strong>.`;
-    const tMsg = tl?`Completaste <strong>${t} viajes</strong>. Superaste los <strong>100</strong> de Líder. ✓`:`Completaste <strong>${t} viajes</strong>. Para Líder necesitabas <strong>100</strong>. Te faltaron <strong>${100-t} viajes</strong>.`;
+    const tMsg = tl?`Completaste <strong>${t} viajes</strong>. Superaste los <strong>${tripsLiderMin}</strong> de Líder. ✓`:`Completaste <strong>${t} viajes</strong>. Para Líder necesitabas <strong>${tripsLiderMin}</strong>. Te faltaron <strong>${tripsLiderMin-t} viajes</strong>.`;
     list.innerHTML =
       critItem(rl,'⭐','Calificación',rMsg,!rl?`apunta a una calificación de 4.8 o más`:null,(r/5)*100,rl?'fill-teal':'fill-red')+
       critItem(cl,'❌','Cancelaciones',cMsg,!cl?`intenta mantener tus cancelaciones por debajo del 12%`:null,cl?100:((22-c)/22)*100,cl?'fill-teal':'fill-red')+
       critItem(al,'✅','Aceptación de viajes',aMsg,!al?`acepta más viajes para superar el 30%`:null,(a/30)*100,al?'fill-teal':'fill-red')+
-      critItem(tl,'🚗','Viajes completados',tMsg,!tl?`completa al menos 100 viajes`:null,(t/100)*100,tl?'fill-teal':'fill-red');
+      critItem(tl,'🚗','Viajes completados',tMsg,!tl?`completa al menos ${tripsLiderMin} viajes`:null,(t/tripsLiderMin)*100,tl?'fill-teal':'fill-red');
   } else {
     const rMsg = ri?`Tuviste <strong>${r}</strong>. Cumpliste el mínimo de <strong>4.5</strong>. ✓`:`Tuviste <strong>${r}</strong>. Necesitabas al menos <strong>4.5</strong>. Te faltaron <strong>${fmt(4.5-r)} puntos</strong>.`;
     const cMsg = ci?`Tuviste <strong>${c}%</strong>. Estuviste bien, el máximo era <strong>22%</strong>. ✓`:`Tuviste <strong>${c}%</strong>. El máximo permitido era <strong>22%</strong>. Estuviste <strong>${fmt(c-22)}% por encima</strong>.`;
     const aMsg = ai?`Tuviste <strong>${a}%</strong>. Cumpliste el mínimo de <strong>15%</strong>. ✓`:`Tuviste <strong>${a}%</strong>. Necesitabas al menos <strong>15%</strong>. Te faltaron <strong>${fmt(15-a)} puntos porcentuales</strong>.`;
-    const tMsg = ti?`Completaste <strong>${t} viajes</strong>. Superaste los <strong>25</strong> de Impulso. ✓`:`Completaste <strong>${t} viajes</strong>. Para Impulso necesitabas <strong>25</strong>. Te faltaron <strong>${25-t} viajes</strong>.`;
+    const tMsg = ti?`Completaste <strong>${t} viajes</strong>. Superaste los <strong>${tripsImpulsoMin}</strong> de Impulso. ✓`:`Completaste <strong>${t} viajes</strong>. Para Impulso necesitabas <strong>${tripsImpulsoMin}</strong>. Te faltaron <strong>${tripsImpulsoMin-t} viajes</strong>.`;
     list.innerHTML =
       critItem(ri,'⭐','Calificación',rMsg,!ri?`apunta a mantener tu calificación en 4.5 o más`:null,(r/4.5)*100,ri?'fill-green':'fill-red')+
       critItem(ci,'❌','Cancelaciones',cMsg,!ci?`intenta cancelar menos viajes, el límite es 22%`:null,ci?100:((22-c)/22)*100,ci?'fill-green':'fill-red')+
       critItem(ai,'✅','Aceptación de viajes',aMsg,!ai?`acepta más viajes para superar el 15%`:null,(a/15)*100,ai?'fill-green':'fill-red')+
-      critItem(ti,'🚗','Viajes completados',tMsg,!ti?`completa al menos 25 viajes el próximo mes`:null,(t/25)*100,ti?'fill-green':'fill-red');
+      critItem(ti,'🚗','Viajes completados',tMsg,!ti?`completa al menos ${tripsImpulsoMin} viajes el próximo mes`:null,(t/tripsImpulsoMin)*100,ti?'fill-green':'fill-red');
   }
 }
 </script>
